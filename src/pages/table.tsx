@@ -21,16 +21,21 @@ import { Input } from "@heroui/input";
 
 import { title } from "@/components/primitives";
 import DefaultLayout from "@/layouts/default";
-import { MemesService } from "@/services/memesService.ts";
+import { Meme, MemesService } from "@/services/memesService.ts";
 
-export default function TablePage() {
-  const [memes, setMemes] = useState([]);
+interface Column {
+  key: keyof Meme | "action" | "image";
+  label: string;
+}
+
+export default function TablePage(): JSX.Element {
+  const [memes, setMemes] = useState<Meme[]>([]);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [selectedMeme, setSelectedMeme] = useState(null);
+  const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
 
   useEffect(() => {
     const fetchMemes = async () => {
-      const newMemes = await MemesService.getAllMemes();
+      const newMemes: Meme[] = await MemesService.getAllMemes();
 
       if (newMemes?.length > 0) {
         setMemes(newMemes);
@@ -41,29 +46,12 @@ export default function TablePage() {
     fetchMemes();
   }, []);
 
-  console.log(memes);
-
-  const columns: { key: string; label: string }[] = [
-    {
-      key: "id",
-      label: "ID",
-    },
-    {
-      key: "name",
-      label: "NAME",
-    },
-    {
-      key: "image",
-      label: "IMAGE",
-    },
-    {
-      key: "likes",
-      label: "LIKES",
-    },
-    {
-      key: "action",
-      label: "Action",
-    },
+  const columns: Column[] = [
+    { key: "id", label: "ID" },
+    { key: "name", label: "NAME" },
+    { key: "image", label: "IMAGE" },
+    { key: "likes", label: "LIKES" },
+    { key: "action", label: "Action" },
   ];
 
   return (
@@ -73,7 +61,7 @@ export default function TablePage() {
           <h1 className={title()}>Table memes</h1>
         </div>
         <div className="inline-block text-center justify-center w-full max-w-3xl">
-          <Table className=" w-full  min-w-full overflow-hidden">
+          <Table className="w-full min-w-full overflow-hidden">
             <TableHeader columns={columns}>
               {(column) => (
                 <TableColumn key={column.key} className="text-center">
@@ -82,19 +70,19 @@ export default function TablePage() {
               )}
             </TableHeader>
             <TableBody items={memes}>
-              {(item) => (
-                <TableRow key={item?.id}>
+              {(item: Meme) => (
+                <TableRow key={item.id}>
                   {(columnKey) => (
                     <TableCell className="text-center">
                       {columnKey === "image" ? (
                         <a
                           className="underline block md:max-w-[400px] md:truncate"
-                          href={getKeyValue(item, "image_path")}
+                          href={item.image_path}
                           rel="noopener noreferrer"
                           target="_blank"
                         >
                           <span className="hidden md:inline">
-                            {getKeyValue(item, "image_path")}
+                            {item.image_path}
                           </span>
                           <span className="inline md:hidden">View</span>
                         </a>
@@ -108,7 +96,7 @@ export default function TablePage() {
                           Edit
                         </Button>
                       ) : (
-                        getKeyValue(item, columnKey)
+                        getKeyValue(item, columnKey as keyof Meme)
                       )}
                     </TableCell>
                   )}
@@ -117,6 +105,8 @@ export default function TablePage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Modal */}
         <Modal isOpen={isOpen} placement="center" onOpenChange={onOpenChange}>
           <ModalContent>
             {(onClose) => (
@@ -134,20 +124,28 @@ export default function TablePage() {
                     label="Name"
                     value={selectedMeme?.name || ""}
                     onChange={(e) =>
-                      setSelectedMeme((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
+                      setSelectedMeme((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              name: e.target.value,
+                            }
+                          : null,
+                      )
                     }
                   />
                   <Input
-                    label="Image URL (.jpg)"
+                    label="Image URL"
                     value={selectedMeme?.image_path || ""}
                     onChange={(e) =>
-                      setSelectedMeme((prev) => ({
-                        ...prev,
-                        image_path: e.target.value,
-                      }))
+                      setSelectedMeme((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              image_path: e.target.value,
+                            }
+                          : null,
+                      )
                     }
                   />
                   <Input
@@ -157,10 +155,14 @@ export default function TablePage() {
                     type="number"
                     value={selectedMeme?.likes?.toString() || "0"}
                     onChange={(e) =>
-                      setSelectedMeme((prev) => ({
-                        ...prev,
-                        likes: parseInt(e.target.value),
-                      }))
+                      setSelectedMeme((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              likes: parseInt(e.target.value),
+                            }
+                          : null,
+                      )
                     }
                   />
                 </ModalBody>
@@ -170,11 +172,11 @@ export default function TablePage() {
                   </Button>
                   <Button
                     color="primary"
-                    onPress={async () => {
-                      const imageUrl = selectedMeme?.image_path || "";
+                    onPress={async (): Promise<void> => {
+                      if (!selectedMeme) return;
 
                       try {
-                        new URL(imageUrl);
+                        new URL(selectedMeme.image_path);
                       } catch {
                         alert("Please enter a valid image URL.");
 
@@ -182,7 +184,7 @@ export default function TablePage() {
                       }
 
                       try {
-                        const updated = await MemesService.updateMeme(
+                        const updated: Meme = await MemesService.updateMeme(
                           selectedMeme.id,
                           {
                             name: selectedMeme.name,
@@ -191,8 +193,10 @@ export default function TablePage() {
                           },
                         );
 
-                        setMemes((prev) =>
-                          prev.map((m) => (m.id === updated.id ? updated : m)),
+                        setMemes((prev: Meme[]) =>
+                          prev.map((m: Meme) =>
+                            m.id === updated.id ? updated : m,
+                          ),
                         );
 
                         onClose();

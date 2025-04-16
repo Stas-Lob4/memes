@@ -5,16 +5,16 @@ import { Link } from "@heroui/link";
 
 import { title } from "@/components/primitives";
 import DefaultLayout from "@/layouts/default";
-import { MemesService } from "@/services/memesService.ts";
+import { Meme, MemesService } from "@/services/memesService.ts";
 
 export default function CardsPage() {
-  const [memes, setMemes] = useState([]);
+  const [memes, setMemes] = useState<Meme[]>([]);
 
   useEffect(() => {
     const fetchMemes = async () => {
       const newMemes = await MemesService.getAllMemes();
 
-      if (newMemes?.length > 0) {
+      if (newMemes && newMemes?.length > 0) {
         setMemes(newMemes);
         console.log("Memes fetched successfully:", newMemes);
       }

@@ -1,7 +1,15 @@
 import { supabase } from "@/lib/supabaseClient";
 
+export interface Meme {
+  id: string;
+  created_at: string;
+  name: string;
+  image_path: string;
+  likes: number;
+}
+
 export const MemesService = {
-  async createMeme(name: string, imageFile: File) {
+  async createMeme(name: string, imageFile: File): Promise<Meme> {
     try {
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
@@ -37,7 +45,7 @@ export const MemesService = {
     }
   },
 
-  async getAllMemes() {
+  async getAllMemes(): Promise<Meme[]> {
     const { data, error } = await supabase.from("memes").select("*");
 
     if (error) throw error;
@@ -60,7 +68,7 @@ export const MemesService = {
   async updateMeme(
     id: string,
     fields: { name?: string; image_path?: string; likes?: number },
-  ) {
+  ): Promise<Meme> {
     const updateFields: Record<string, any> = {};
 
     if (fields.name !== undefined) updateFields.name = fields.name;
